@@ -1,0 +1,629 @@
+{
+  "info": {
+    "_postman_id": "b9e9f6a5-77d5-4d1c-8f64-0f7c9c3b1234",
+    "name": "DevDeck API",
+    "description": "Colecao Postman para as rotas do backend NestJS (prefixo global /api). Ajuste {{base_url}} se necessario.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Rotas sem JWT para login/signup",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice Teste\",\n  \"email\": \"alice@example.com\",\n  \"password\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "signup"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/user/me",
+              "host": ["{{base_url}}"],
+              "path": ["user", "me"]
+            }
+          }
+        },
+        {
+          "name": "Update Settings",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notifyDailySummary\": true,\n  \"notifyStaleTasks\": true,\n  \"notifyViaWhatsApp\": false,\n  \"whatsappNumber\": \"+5511999999999\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/user/settings",
+              "host": ["{{base_url}}"],
+              "path": ["user", "settings"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Boards",
+      "item": [
+        {
+          "name": "Create Board (Personal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Meu board pessoal\",\n  \"type\": \"personal\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/boards",
+              "host": ["{{base_url}}"],
+              "path": ["boards"]
+            }
+          }
+        },
+        {
+          "name": "Create Board (Group)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Board do grupo\",\n  \"type\": \"group\",\n  \"groupId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/boards",
+              "host": ["{{base_url}}"],
+              "path": ["boards"]
+            }
+          }
+        },
+        {
+          "name": "List Boards (Todos)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/boards",
+              "host": ["{{base_url}}"],
+              "path": ["boards"]
+            }
+          }
+        },
+        {
+          "name": "List Boards (Por Grupo)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/boards?groupId=1",
+              "host": ["{{base_url}}"],
+              "path": ["boards"],
+              "query": [
+                { "key": "groupId", "value": "1", "description": "ID do grupo" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reorder Boards",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boards\": [\n    { \"id\": 1, \"order\": 1 },\n    { \"id\": 2, \"order\": 2 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/boards/reorder",
+              "host": ["{{base_url}}"],
+              "path": ["boards", "reorder"]
+            }
+          }
+        },
+        {
+          "name": "Get Board",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/boards/:id",
+              "host": ["{{base_url}}"],
+              "path": ["boards", ":id"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Board",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Board renomeado\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/boards/:id",
+              "host": ["{{base_url}}"],
+              "path": ["boards", ":id"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Board",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/boards/:id",
+              "host": ["{{base_url}}"],
+              "path": ["boards", ":id"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Groups",
+      "item": [
+        {
+          "name": "Create Group",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Meu Grupo\",\n  \"description\": \"Descrição do grupo\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/groups",
+              "host": ["{{base_url}}"],
+              "path": ["groups"]
+            }
+          }
+        },
+        {
+          "name": "List Groups",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/groups",
+              "host": ["{{base_url}}"],
+              "path": ["groups"]
+            }
+          }
+        },
+        {
+          "name": "Get Pending Invites",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/groups/invites/pending",
+              "host": ["{{base_url}}"],
+              "path": ["groups", "invites", "pending"]
+            }
+          }
+        },
+        {
+          "name": "Get Group Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/groups/:id",
+              "host": ["{{base_url}}"],
+              "path": ["groups", ":id"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Group",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Novo Nome\",\n  \"description\": \"Nova descrição\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/groups/:id",
+              "host": ["{{base_url}}"],
+              "path": ["groups", ":id"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Group",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/groups/:id",
+              "host": ["{{base_url}}"],
+              "path": ["groups", ":id"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invite Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"usuario@example.com\",\n  \"role\": \"member\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/groups/:id/invite",
+              "host": ["{{base_url}}"],
+              "path": ["groups", ":id", "invite"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept Invite",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/groups/:id/accept-invite",
+              "host": ["{{base_url}}"],
+              "path": ["groups", ":id", "accept-invite"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reject Invite",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/groups/:id/reject-invite",
+              "host": ["{{base_url}}"],
+              "path": ["groups", ":id", "reject-invite"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Group Members",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/groups/:id/members",
+              "host": ["{{base_url}}"],
+              "path": ["groups", ":id", "members"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove Member",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/groups/:id/members/:memberId",
+              "host": ["{{base_url}}"],
+              "path": ["groups", ":id", "members", ":memberId"],
+              "variable": [
+                { "key": "id", "value": "1" },
+                { "key": "memberId", "value": "2" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Create Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Fazer onboarding\",\n  \"description\": \"Ler docs\",\n  \"status\": \"TODO\",\n  \"boardId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks",
+              "host": ["{{base_url}}"],
+              "path": ["tasks"]
+            }
+          }
+        },
+        {
+          "name": "List Tasks (opcional boardId)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/tasks?boardId=1",
+              "host": ["{{base_url}}"],
+              "path": ["tasks"],
+              "query": [
+                { "key": "boardId", "value": "1", "description": "Opcional" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Task",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/tasks/:id",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", ":id"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Atualizado\",\n  \"description\": \"Desc atualizada\",\n  \"status\": \"DOING\",\n  \"boardId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/:id",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", ":id"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Task",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/tasks/:id",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", ":id"],
+              "variable": [
+                { "key": "id", "value": "1" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "WhatsApp",
+      "item": [
+        {
+          "name": "Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/whatsapp/status",
+              "host": ["{{base_url}}"],
+              "path": ["whatsapp", "status"]
+            }
+          }
+        },
+        {
+          "name": "Connect",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/whatsapp/connect",
+              "host": ["{{base_url}}"],
+              "path": ["whatsapp", "connect"]
+            }
+          }
+        },
+        {
+          "name": "Disconnect",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/whatsapp/disconnect",
+              "host": ["{{base_url}}"],
+              "path": ["whatsapp", "disconnect"]
+            }
+          }
+        },
+        {
+          "name": "Test Message",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/whatsapp/test-message",
+              "host": ["{{base_url}}"],
+              "path": ["whatsapp", "test-message"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "WhatsApp Meta",
+      "item": [
+        {
+          "name": "Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/whatsapp-meta/status",
+              "host": ["{{base_url}}"],
+              "path": ["whatsapp-meta", "status"]
+            }
+          }
+        },
+        {
+          "name": "Save Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumberId\": \"1234567890\",\n  \"accessToken\": \"EAAB...\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/whatsapp-meta/credentials",
+              "host": ["{{base_url}}"],
+              "path": ["whatsapp-meta", "credentials"]
+            }
+          }
+        },
+        {
+          "name": "Delete Credentials",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/whatsapp-meta/credentials",
+              "host": ["{{base_url}}"],
+              "path": ["whatsapp-meta", "credentials"]
+            }
+          }
+        },
+        {
+          "name": "Send Test",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/whatsapp-meta/test",
+              "host": ["{{base_url}}"],
+              "path": ["whatsapp-meta", "test"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pusher",
+      "item": [
+        {
+          "name": "Auth",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"socket_id\": \"123.456\",\n  \"channel_name\": \"private-user-1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pusher/auth",
+              "host": ["{{base_url}}"],
+              "path": ["pusher", "auth"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

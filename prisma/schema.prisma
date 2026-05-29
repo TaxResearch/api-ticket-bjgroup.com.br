@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int           @id @default(autoincrement())
+  email              String        @unique
+  name               String
+  password           String
+  company            String?
+  isDevTeam          Boolean       @default(false)
+  discordWebhook     String?       @db.VarChar(255)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  notifyDailySummary Boolean       @default(true)
+  notificationDays   String?       @db.VarChar(255)
+  notifyStaleTasks   Boolean       @default(true)
+  boards             Board[]
+  groupMembers       GroupMember[]
+  groupsOwned        Group[]       @relation("groupOwner")
+  assignedTickets    Ticket[]
+  requestedTickets   Ticket[]      @relation("requester")
+  ticketComments     TicketComment[]
+
+  @@map("users")
+}
+
+model Board {
+  id                  Int      @id @default(autoincrement())
+  name                String
+  order               Int      @default(0)
+  type                String   @default("personal")
+  userId              Int?
+  groupId             Int?
+  discordWebhook      String?  @db.VarChar(255)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  isPublicTicketBoard Boolean  @default(false)
+  publicToken         String?  @unique
+  isMainTicketBoard   Boolean  @default(false)
+  group               Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user                User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tickets             Ticket[]
+
+  @@unique([name, userId, groupId])
+  @@index([userId], map: "boards_userId_fkey")
+  @@index([groupId], map: "boards_groupId_fkey")
+  @@map("boards")
+}
+
+model Group {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String?
+  createdBy   Int
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  boards      Board[]
+  members     GroupMember[]
+  owner       User          @relation("groupOwner", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([createdBy], map: "groups_createdBy_fkey")
+  @@map("groups")
+}
+
+model GroupMember {
+  id           Int      @id @default(autoincrement())
+  groupId      Int
+  userId       Int
+  role         String   @default("member")
+  inviteStatus String   @default("pending")
+  joinedAt     DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  group        Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId], map: "group_members_groupId_fkey")
+  @@index([userId], map: "group_members_userId_fkey")
+  @@map("group_members")
+}
+
+model Ticket {
+  id                 Int       @id @default(autoincrement())
+  title              String
+  description        String?
+  status             String    @default("TODO")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  boardId            Int
+  assignedUserId     Int?
+  priority           String    @default("MEDIUM")
+  estimatedTime      Int?
+  dueDate            DateTime?
+  tags               String?
+  isTicket           Boolean   @default(false)
+  requiresValidation Boolean   @default(false)
+  requesterName      String?
+  requesterEmail     String?
+  requesterUserId    Int?
+  category           String?
+  attachments        String?
+  subtasks           Subtask[]
+  comments           TicketComment[]
+  assignedUser       User?     @relation(fields: [assignedUserId], references: [id])
+  requester          User?     @relation("requester", fields: [requesterUserId], references: [id])
+  board              Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId], map: "tasks_boardId_fkey")
+  @@index([assignedUserId], map: "tasks_assignedUserId_fkey")
+  @@index([requesterUserId], map: "tasks_requesterUserId_fkey")
+  @@map("tickets")
+}
+
+model Subtask {
+  id        Int      @id @default(autoincrement())
+  title     String
+  completed Boolean  @default(false)
+  ticketId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId], map: "subtasks_ticketId_fkey")
+  @@map("subtasks")
+}
+
+model TicketComment {
+  id         Int      @id @default(autoincrement())
+  ticketId   Int
+  userId     Int?
+  authorName String
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
+  @@map("ticket_comments")
+}
