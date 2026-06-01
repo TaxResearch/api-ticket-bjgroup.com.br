@@ -41,7 +41,10 @@ export class TaskService {
         tags: createTaskDto.tags,
       },
     });
-    this.pusherService.trigger('devdeck-tickets', 'ticket.created', { ticketId: ticket.id, boardId: ticket.boardId });
+    this.pusherService.trigger('devdeck-tickets', 'ticket.created', {
+      ticketId: ticket.id,
+      boardId: ticket.boardId,
+    });
     return ticket;
   }
 
@@ -77,7 +80,10 @@ export class TaskService {
         attachments,
       },
     });
-    this.pusherService.trigger('devdeck-tickets', 'ticket.created', { ticketId: ticket.id, boardId: ticket.boardId });
+    this.pusherService.trigger('devdeck-tickets', 'ticket.created', {
+      ticketId: ticket.id,
+      boardId: ticket.boardId,
+    });
     return ticket;
   }
 
@@ -118,7 +124,10 @@ export class TaskService {
         attachments,
       },
     });
-    this.pusherService.trigger('devdeck-tickets', 'ticket.created', { ticketId: ticket.id, boardId: ticket.boardId });
+    this.pusherService.trigger('devdeck-tickets', 'ticket.created', {
+      ticketId: ticket.id,
+      boardId: ticket.boardId,
+    });
     return ticket;
   }
 
@@ -227,7 +236,9 @@ export class TaskService {
   async remove(id: number) {
     await this.findOne(id);
     const result = await this.prisma.ticket.delete({ where: { id } });
-    this.pusherService.trigger('devdeck-tickets', 'ticket.deleted', { ticketId: id });
+    this.pusherService.trigger('devdeck-tickets', 'ticket.deleted', {
+      ticketId: id,
+    });
     return result;
   }
 

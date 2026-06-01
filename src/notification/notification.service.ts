@@ -109,7 +109,8 @@ export class NotificationService {
           this.discordService
             .sendEmbed(board.discordWebhook, {
               title: `📢 ${board.name} — Tickets Disponíveis`,
-              description: 'Os tickets abaixo ainda não têm responsável. Alguém pode pegar!',
+              description:
+                'Os tickets abaixo ainda não têm responsável. Alguém pode pegar!',
               color: 0x5865f2,
               fields: [
                 {
@@ -118,7 +119,9 @@ export class NotificationService {
                   inline: false,
                 },
               ],
-              footer: { text: `${unassigned.length} ticket(s) aguardando atribuição` },
+              footer: {
+                text: `${unassigned.length} ticket(s) aguardando atribuição`,
+              },
               timestamp: new Date().toISOString(),
             })
             .catch((e) =>
@@ -253,7 +256,9 @@ export class NotificationService {
         },
       },
     });
-    this.logger.log(`testDiscordWebhooks: ${boards.length} board(s) coletivo(s) com webhook.`);
+    this.logger.log(
+      `testDiscordWebhooks: ${boards.length} board(s) coletivo(s) com webhook.`,
+    );
 
     const sent: string[] = [];
 
@@ -278,7 +283,8 @@ export class NotificationService {
 
         await this.discordService.sendEmbed(board.discordWebhook, {
           title: `📢 ${board.name} — Tickets Disponíveis`,
-          description: 'Os tickets abaixo ainda não têm responsável. Alguém pode pegar!',
+          description:
+            'Os tickets abaixo ainda não têm responsável. Alguém pode pegar!',
           color: 0x5865f2,
           fields: [
             {
@@ -287,7 +293,9 @@ export class NotificationService {
               inline: false,
             },
           ],
-          footer: { text: `${unassigned.length} ticket(s) aguardando atribuição · teste de webhook` },
+          footer: {
+            text: `${unassigned.length} ticket(s) aguardando atribuição · teste de webhook`,
+          },
           timestamp: new Date().toISOString(),
         });
       }

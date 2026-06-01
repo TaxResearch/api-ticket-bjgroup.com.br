@@ -27,6 +27,9 @@ export class NotificationController {
   @Post('test/discord')
   async testDiscord() {
     const sent = await this.notificationService.testDiscordWebhooks();
-    return { message: `Embed enviado para ${sent.length} board(s).`, boards: sent };
+    return {
+      message: `Embed enviado para ${sent.length} board(s).`,
+      boards: sent,
+    };
   }
 }

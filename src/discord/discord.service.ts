@@ -34,7 +34,9 @@ export class DiscordService {
           embeds: [embed],
         }),
       );
-      this.logger.log('Notificação (embed) enviada para o Discord com sucesso.');
+      this.logger.log(
+        'Notificação (embed) enviada para o Discord com sucesso.',
+      );
     } catch (error) {
       this.logger.error(
         `Falha ao enviar notificação para o Discord: ${error.message}`,

@@ -16,7 +16,7 @@ COPY prisma ./prisma
 
 RUN npx prisma generate
 
-COPY nest-cli.json tsconfig.json tsconfig.build.json ./
+COPY nest-cli.json tsconfig.json tsconfig.build.json eslint.config.mjs .prettierrc ./
 COPY src ./src
 
 RUN npm run build
