@@ -1,0 +1,17 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+coverage
+.nyc_output
+*.log
+.vscode
+.idea
+uploads/*
+!uploads/.gitkeep
+DevDeck.postman_collection.json
+vercel.json
+.vercelignore
