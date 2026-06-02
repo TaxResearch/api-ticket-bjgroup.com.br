@@ -15,3 +15,5 @@ uploads/*
 DevDeck.postman_collection.json
 vercel.json
 .vercelignore
+prisma/prisma
+**/*.db
