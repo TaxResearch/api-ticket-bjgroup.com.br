@@ -2,7 +2,10 @@
 #
 #   docker compose up -d
 #
-# API: http://localhost:${PORT:-3099}/api
+# Porta: o container escuta em PORT (.env, padrao 3001) e e publicado em
+# 127.0.0.1:HOST_PORT (.env, padrao 3099). O Plesk faz proxy reverso de
+# apiticket.bjgroup.com.br -> http://127.0.0.1:${HOST_PORT:-3099}
+# Se a HOST_PORT tambem estiver ocupada, defina outra livre no .env.
 
 services:
   api:
@@ -12,7 +15,7 @@ services:
     container_name: ticket-bjgroup-api
     restart: unless-stopped
     ports:
-      - "${PORT:-3099}:${PORT:-3099}"
+      - "127.0.0.1:${HOST_PORT:-3099}:${PORT:-3001}"
     env_file:
       - .env
     volumes:
