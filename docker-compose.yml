@@ -15,7 +15,7 @@ services:
     container_name: ticket-bjgroup-api
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${HOST_PORT:-3099}:${PORT:-3001}"
+      - "127.0.0.1:${HOST_PORT:-3099}:${PORT:-3099}"
     env_file:
       - .env
     volumes:

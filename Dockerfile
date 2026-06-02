@@ -47,7 +47,7 @@ RUN chmod +x /entrypoint.sh \
 
 USER nodejs
 
-EXPOSE 3001
+EXPOSE 3099
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/main.js"]
