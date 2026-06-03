@@ -61,6 +61,33 @@ export class TaskService {
       throw new NotFoundException('Quadro de tickets inválido ou desativado.');
     }
 
+    return this.persistPublicTicket(board.id, createTicketDto, files);
+  }
+
+  // Cria ticket no board principal (kanban coletivo) sem necessidade de token.
+  // Usado pelos painéis da holding que abrem o widget sem captura manual de token.
+  async createMainBoardTicket(
+    createTicketDto: CreateTicketDto,
+    files?: Express.Multer.File[],
+  ) {
+    const board = await this.prisma.board.findFirst({
+      where: { isMainTicketBoard: true },
+    });
+
+    if (!board) {
+      throw new NotFoundException(
+        'Nenhum board principal de tickets configurado. Contate o administrador.',
+      );
+    }
+
+    return this.persistPublicTicket(board.id, createTicketDto, files);
+  }
+
+  private async persistPublicTicket(
+    boardId: number,
+    createTicketDto: CreateTicketDto,
+    files?: Express.Multer.File[],
+  ) {
     const attachments = files?.length
       ? JSON.stringify(files.map((f) => `/uploads/${f.filename}`))
       : null;
@@ -70,7 +97,7 @@ export class TaskService {
         title: createTicketDto.title,
         description: createTicketDto.description,
         status: 'TODO',
-        boardId: board.id,
+        boardId,
         priority: 'MEDIUM',
         isTicket: true,
         requesterName: createTicketDto.requesterName,

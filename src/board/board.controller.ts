@@ -39,6 +39,13 @@ export class BoardController {
     return this.boardService.findByPublicToken(token);
   }
 
+  // ROTA PÚBLICA (Sem Guard, Sem Token): dados do board principal de tickets.
+  // Permite que qualquer painel da holding abra o widget sem token manual.
+  @Get('public-main')
+  async getMainTicketBoardInfo() {
+    return this.boardService.findMainTicketBoardInfo();
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req) {

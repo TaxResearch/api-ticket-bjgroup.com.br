@@ -45,6 +45,19 @@ export class TaskController {
     return this.taskService.create(createTaskDto, req.user.userId);
   }
 
+  // ROTA PÚBLICA: Criar Ticket no board principal (Sem Guard, Sem Token).
+  // Cai no kanban coletivo (isMainTicketBoard) — sem captura manual de token.
+  @Post('ticket')
+  @UseInterceptors(
+    FilesInterceptor('attachments', 5, { storage: uploadStorage }),
+  )
+  async createMainTicket(
+    @Body() createTicketDto: CreateTicketDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    return this.taskService.createMainBoardTicket(createTicketDto, files);
+  }
+
   // ROTA PÚBLICA: Criar Ticket (Sem Guard)
   @Post('ticket/:token')
   @UseInterceptors(

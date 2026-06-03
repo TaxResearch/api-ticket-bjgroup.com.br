@@ -161,4 +161,30 @@ export class BoardService {
       description: 'Central de Suporte',
     };
   }
+
+  // Board principal de tickets (kanban coletivo) — sem necessidade de token.
+  // Usado pelos painéis da holding que abrem o widget sem captura manual de token.
+  async findMainTicketBoardInfo() {
+    const board = await this.prisma.board.findFirst({
+      where: { isMainTicketBoard: true },
+      include: {
+        group: { select: { name: true } },
+        user: { select: { name: true } },
+      },
+    });
+
+    if (!board) {
+      throw new NotFoundException(
+        'Nenhum board principal de tickets configurado. Contate o administrador.',
+      );
+    }
+
+    return {
+      id: board.id,
+      name: board.name,
+      ownerName: board.type === 'group' ? board.group?.name : board.user?.name,
+      type: board.type,
+      description: 'Central de Suporte',
+    };
+  }
 }
