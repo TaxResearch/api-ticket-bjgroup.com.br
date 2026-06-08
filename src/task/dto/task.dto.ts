@@ -7,7 +7,16 @@ import {
   IsBoolean,
   IsDateString,
   IsEmail,
+  IsIn,
 } from 'class-validator';
+
+// Empresas da holding BJGROUP — usado na validação e no formulário público.
+export const HOLDING_COMPANIES = [
+  'Previnity',
+  'TaxResearch',
+  'OkCarro',
+  'Aplicari',
+] as const;
 
 // Enum para prioridade (opcional, mas bom para padronizar)
 export enum TaskPriority {
@@ -73,6 +82,13 @@ export class CreateTicketDto {
   @IsEmail({}, { message: 'Forneça um email válido para contato.' })
   @IsNotEmpty()
   requesterEmail: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'A empresa é obrigatória.' })
+  @IsIn(HOLDING_COMPANIES as unknown as string[], {
+    message: 'Selecione uma empresa válida do grupo.',
+  })
+  requesterCompany: string;
 
   @IsString()
   @IsOptional()

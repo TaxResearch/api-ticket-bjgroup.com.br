@@ -102,6 +102,7 @@ model Ticket {
   requiresValidation Boolean   @default(false)
   requesterName      String?
   requesterEmail     String?
+  requesterCompany   String?
   requesterUserId    Int?
   category           String?
   attachments        String?

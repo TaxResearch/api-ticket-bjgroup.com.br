@@ -103,6 +103,7 @@ export class TaskService {
         requesterName: createTicketDto.requesterName,
         // Normaliza o e-mail (identidade do solicitante) p/ não fragmentar histórico.
         requesterEmail: createTicketDto.requesterEmail?.trim().toLowerCase(),
+        requesterCompany: createTicketDto.requesterCompany,
         category: createTicketDto.category,
         tags: `ticket,suporte${createTicketDto.category ? ',' + createTicketDto.category.toLowerCase().replace(/\s+/g, '-') : ''}`,
         attachments,
@@ -148,6 +149,7 @@ export class TaskService {
         requesterUserId: userId,
         requesterName: user.name,
         requesterEmail: user.email?.trim().toLowerCase(),
+        requesterCompany: user.company,
         tags: `ticket,${dto.category.toLowerCase().replace(/\s+/g, '-')}`,
         attachments,
       },
@@ -167,6 +169,7 @@ export class TaskService {
         title: true,
         description: true,
         category: true,
+        requesterCompany: true,
         status: true,
         priority: true,
         attachments: true,
