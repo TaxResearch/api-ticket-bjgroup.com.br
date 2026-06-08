@@ -149,7 +149,7 @@ export class TaskService {
         requesterUserId: userId,
         requesterName: user.name,
         requesterEmail: user.email?.trim().toLowerCase(),
-        requesterCompany: user.company,
+        requesterCompany: dto.requesterCompany || user.company,
         tags: `ticket,${dto.category.toLowerCase().replace(/\s+/g, '-')}`,
         attachments,
       },

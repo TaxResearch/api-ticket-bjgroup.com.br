@@ -107,6 +107,13 @@ export class CreateEmployeeTicketDto {
   @IsString()
   @IsNotEmpty({ message: 'A categoria é obrigatória.' })
   category: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(HOLDING_COMPANIES as unknown as string[], {
+    message: 'Selecione uma empresa válida do grupo.',
+  })
+  requesterCompany?: string;
 }
 
 export class UpdateTaskDto {
