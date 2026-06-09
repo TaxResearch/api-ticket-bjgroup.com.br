@@ -50,11 +50,11 @@ export class CreateTaskDto {
 
   @IsInt()
   @IsOptional()
-  estimatedTime?: number; // Em minutos
+  estimatedTime?: number; // Prazo de Entrega em horas (deriva o dueDate)
 
   @IsDateString()
   @IsOptional()
-  dueDate?: string; // Data ISO 8601
+  dueDate?: string; // Data ISO 8601 (derivada de estimatedTime no service)
 
   @IsString()
   @IsOptional()
@@ -147,11 +147,11 @@ export class UpdateTaskDto {
 
   @IsInt()
   @IsOptional()
-  estimatedTime?: number;
+  estimatedTime?: number; // Prazo de Entrega em horas (deriva o dueDate)
 
   @IsDateString()
   @IsOptional()
-  dueDate?: string;
+  dueDate?: string; // Derivada de estimatedTime no service
 
   @IsString()
   @IsOptional()

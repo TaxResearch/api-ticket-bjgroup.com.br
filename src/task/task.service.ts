@@ -19,6 +19,58 @@ const STATUS_LABELS: Record<string, string> = {
   DONE: 'Concluído',
 };
 
+// Tags de prioridade são "gerenciadas": entram/saem automaticamente conforme
+// a prioridade do ticket, sem mexer nas tags manuais (empresa, categoria...).
+const PRIORITY_TAGS: Record<string, string> = {
+  HIGH: 'alta',
+  URGENT: 'urgente',
+};
+
+// Normaliza um texto livre em tag: minúsculas, sem acentos, espaços -> hífen.
+function slugifyTag(input?: string | null): string {
+  if (!input) return '';
+  return input
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+// Monta as tags automáticas a partir dos dados que já temos do ticket:
+// empresa do solicitante, categoria e primeiro nome de quem abriu.
+// Ex.: { TaxResearch, Bug, "Mariana Silva" } -> "taxresearch,bug,mariana".
+// A prioridade não entra aqui (no momento da criação é sempre MEDIUM); ela é
+// adicionada depois, quando o dev classifica o ticket — ver syncPriorityTag.
+function buildTicketTags(opts: {
+  company?: string | null;
+  category?: string | null;
+  requesterName?: string | null;
+}): string {
+  const tags = [
+    slugifyTag(opts.company),
+    slugifyTag(opts.category),
+    slugifyTag(opts.requesterName?.split(' ')[0]),
+  ];
+  return [...new Set(tags.filter(Boolean))].join(',');
+}
+
+// Mantém a tag de prioridade em sincronia sem destruir as tags manuais:
+// remove qualquer token gerenciado (alta/urgente) e re-adiciona o atual.
+function syncPriorityTag(
+  tagsStr: string | null | undefined,
+  priority?: string | null,
+): string {
+  const managed = Object.values(PRIORITY_TAGS);
+  const arr = (tagsStr || '')
+    .split(',')
+    .map((t) => t.trim())
+    .filter((t) => t && !managed.includes(t));
+  if (priority && PRIORITY_TAGS[priority]) arr.push(PRIORITY_TAGS[priority]);
+  return [...new Set(arr)].join(',');
+}
+
 @Injectable()
 export class TaskService {
   constructor(
@@ -36,9 +88,16 @@ export class TaskService {
         status: createTaskDto.status || 'TODO',
         boardId: createTaskDto.boardId,
         priority: createTaskDto.priority || 'MEDIUM',
-        dueDate: createTaskDto.dueDate,
+        // Prazo de Entrega: derivado das horas estimadas (now + horas).
+        dueDate: createTaskDto.estimatedTime
+          ? new Date(Date.now() + createTaskDto.estimatedTime * 3600000)
+          : createTaskDto.dueDate,
         estimatedTime: createTaskDto.estimatedTime,
-        tags: createTaskDto.tags,
+        tags:
+          syncPriorityTag(
+            createTaskDto.tags,
+            createTaskDto.priority || 'MEDIUM',
+          ) || null,
       },
     });
     this.pusherService.trigger('devdeck-tickets', 'ticket.created', {
@@ -105,7 +164,11 @@ export class TaskService {
         requesterEmail: createTicketDto.requesterEmail?.trim().toLowerCase(),
         requesterCompany: createTicketDto.requesterCompany,
         category: createTicketDto.category,
-        tags: `ticket,suporte${createTicketDto.category ? ',' + createTicketDto.category.toLowerCase().replace(/\s+/g, '-') : ''}`,
+        tags: buildTicketTags({
+          company: createTicketDto.requesterCompany,
+          category: createTicketDto.category,
+          requesterName: createTicketDto.requesterName,
+        }),
         attachments,
       },
     });
@@ -150,7 +213,11 @@ export class TaskService {
         requesterName: user.name,
         requesterEmail: user.email?.trim().toLowerCase(),
         requesterCompany: dto.requesterCompany || user.company,
-        tags: `ticket,${dto.category.toLowerCase().replace(/\s+/g, '-')}`,
+        tags: buildTicketTags({
+          company: dto.requesterCompany || user.company,
+          category: dto.category,
+          requesterName: user.name,
+        }),
         attachments,
       },
     });
@@ -212,9 +279,37 @@ export class TaskService {
 
   async update(id: number, updateTaskDto: UpdateTaskDto) {
     const existing = await this.findOne(id);
+
+    // Prazo de Entrega: a data é derivada das horas estimadas. Só recalcula
+    // quando o prazo realmente muda, ancorando em "agora" (reinicia o relógio);
+    // outras edições não mexem na data já definida.
+    const dueDate =
+      updateTaskDto.estimatedTime !== undefined &&
+      updateTaskDto.estimatedTime !== existing.estimatedTime
+        ? updateTaskDto.estimatedTime
+          ? new Date(Date.now() + updateTaskDto.estimatedTime * 3600000)
+          : null
+        : undefined;
+
+    // Mantém a tag de prioridade sincronizada quando a prioridade ou as tags
+    // mudam, sem destruir as tags manuais.
+    const tags =
+      updateTaskDto.priority !== undefined || updateTaskDto.tags !== undefined
+        ? syncPriorityTag(
+            updateTaskDto.tags !== undefined
+              ? updateTaskDto.tags
+              : existing.tags,
+            updateTaskDto.priority ?? existing.priority,
+          ) || null
+        : undefined;
+
     const updated = await this.prisma.ticket.update({
       where: { id },
-      data: updateTaskDto,
+      data: {
+        ...updateTaskDto,
+        ...(dueDate !== undefined ? { dueDate } : {}),
+        ...(tags !== undefined ? { tags } : {}),
+      },
     });
 
     // Discord pessoal ao responsável quando ticket é atribuído
