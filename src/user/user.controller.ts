@@ -10,6 +10,13 @@ import { UpdateUserSettingsDto } from './dto/update-user-settings.dto';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  // Time de dev (atribuíveis no board coletivo). Rota estática, sem conflito com /me.
+  @UseGuards(JwtAuthGuard)
+  @Get('dev-team')
+  async getDevTeam() {
+    return this.userService.findDevTeam();
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Req() req) {

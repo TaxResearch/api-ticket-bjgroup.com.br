@@ -67,4 +67,13 @@ export class UserService {
       data,
     });
   }
+
+  // Lista o time de dev — usuários atribuíveis no board de tickets coletivo.
+  async findDevTeam() {
+    return this.prisma.user.findMany({
+      where: { isDevTeam: true },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: 'asc' },
+    });
+  }
 }
