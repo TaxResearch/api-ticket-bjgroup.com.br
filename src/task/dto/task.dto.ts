@@ -63,6 +63,14 @@ export class CreateTaskDto {
   @IsInt()
   @IsOptional()
   assignedUserId?: number; // Pessoa responsável pela task
+
+  @IsBoolean()
+  @IsOptional()
+  requiresValidation?: boolean; // Exige validação antes de concluir
+
+  @IsInt()
+  @IsOptional()
+  validatorUserId?: number; // Dev designado para validar (quando requiresValidation)
 }
 
 // NOVO: DTO Exclusivo para Tickets Públicos (Não pede boardId, pede Token na URL)
@@ -164,6 +172,10 @@ export class UpdateTaskDto {
   @IsBoolean()
   @IsOptional()
   requiresValidation?: boolean;
+
+  @IsInt()
+  @IsOptional()
+  validatorUserId?: number; // Dev designado para validar (quando requiresValidation)
 }
 
 export class CreateCommentDto {

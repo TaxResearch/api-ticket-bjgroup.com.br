@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { PusherService } from '../pusher/pusher.service';
@@ -93,6 +97,12 @@ export class TaskService {
           ? new Date(Date.now() + createTaskDto.estimatedTime * 3600000)
           : createTaskDto.dueDate,
         estimatedTime: createTaskDto.estimatedTime,
+        assignedUserId: createTaskDto.assignedUserId,
+        requiresValidation: createTaskDto.requiresValidation ?? false,
+        // Validador só faz sentido quando exige validação.
+        validatorUserId: createTaskDto.requiresValidation
+          ? (createTaskDto.validatorUserId ?? null)
+          : null,
         tags:
           syncPriorityTag(
             createTaskDto.tags,
@@ -277,8 +287,24 @@ export class TaskService {
     return ticket;
   }
 
-  async update(id: number, updateTaskDto: UpdateTaskDto) {
+  async update(id: number, updateTaskDto: UpdateTaskDto, userId?: number) {
     const existing = await this.findOne(id);
+
+    // Validação obrigatória: ticket que exige validação só pode ir para DONE
+    // pelas mãos do validador designado — bloqueia o "arrastar para concluir".
+    const willRequireValidation =
+      updateTaskDto.requiresValidation ?? existing.requiresValidation;
+    const effectiveValidator =
+      updateTaskDto.validatorUserId !== undefined
+        ? updateTaskDto.validatorUserId
+        : existing.validatorUserId;
+    if (updateTaskDto.status === 'DONE' && willRequireValidation) {
+      if (!effectiveValidator || userId !== effectiveValidator) {
+        throw new ForbiddenException(
+          'Este ticket requer validação. Apenas o validador designado pode concluí-lo.',
+        );
+      }
+    }
 
     // Prazo de Entrega: a data é derivada das horas estimadas. Só recalcula
     // quando o prazo realmente muda, ancorando em "agora" (reinicia o relógio);
@@ -303,12 +329,19 @@ export class TaskService {
           ) || null
         : undefined;
 
+    // Desligar a validação limpa o validador designado.
+    const validatorReset =
+      updateTaskDto.requiresValidation === false
+        ? { validatorUserId: null }
+        : {};
+
     const updated = await this.prisma.ticket.update({
       where: { id },
       data: {
         ...updateTaskDto,
         ...(dueDate !== undefined ? { dueDate } : {}),
         ...(tags !== undefined ? { tags } : {}),
+        ...validatorReset,
       },
     });
 
