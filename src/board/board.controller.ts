@@ -15,18 +15,19 @@ import {
 import { BoardService } from './board.service';
 import { CreateBoardDto, UpdateBoardDto } from './dto/board.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { DevTeamGuard } from '../auth/dev-team.guard';
 
 @Controller('boards')
 export class BoardController {
   constructor(private readonly boardService: BoardService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Post()
   create(@Req() req, @Body() createBoardDto: CreateBoardDto) {
     return this.boardService.create(req.user.userId, createBoardDto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get()
   findAll(@Req() req, @Query('groupId') groupId?: string) {
     const parsedGroupId = groupId ? parseInt(groupId) : undefined;
@@ -46,14 +47,14 @@ export class BoardController {
     return this.boardService.findMainTicketBoardInfo();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req) {
     return this.boardService.findOne(+id, req.user.userId);
   }
 
   // ROTA PROTEGIDA: Ativar/Desativar Tickets
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Patch(':id/public-toggle')
   async togglePublic(
     @Param('id', ParseIntPipe) id: number,
@@ -63,7 +64,7 @@ export class BoardController {
     return this.boardService.togglePublic(id, req.user.userId, isPublic);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -73,7 +74,7 @@ export class BoardController {
     return this.boardService.update(+id, req.user.userId, updateBoardDto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req) {
     return this.boardService.remove(+id, req.user.userId);

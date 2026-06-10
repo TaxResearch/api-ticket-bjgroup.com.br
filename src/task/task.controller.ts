@@ -10,6 +10,7 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFiles,
+  BadRequestException,
   Req,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
@@ -27,6 +28,7 @@ import {
   CreateTicketDto,
 } from './dto/task.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { DevTeamGuard } from '../auth/dev-team.guard';
 
 const uploadStorage = diskStorage({
   destination: './uploads',
@@ -35,11 +37,26 @@ const uploadStorage = diskStorage({
   },
 });
 
+// Upload de anexos: limita tamanho e tipo (endpoints públicos sem auth).
+const ALLOWED_UPLOAD = /\.(png|jpe?g|gif|webp|pdf|docx?|xlsx?|txt|csv)$/i;
+const uploadOptions = {
+  storage: uploadStorage,
+  limits: { fileSize: 10 * 1024 * 1024, files: 5 }, // 10MB por arquivo
+  fileFilter: (
+    _req: unknown,
+    file: Express.Multer.File,
+    cb: (error: Error | null, acceptFile: boolean) => void,
+  ) => {
+    if (ALLOWED_UPLOAD.test(file.originalname)) cb(null, true);
+    else cb(new BadRequestException('Tipo de arquivo não permitido.'), false);
+  },
+};
+
 @Controller('tasks')
 export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Post()
   create(@Req() req, @Body() createTaskDto: CreateTaskDto) {
     return this.taskService.create(createTaskDto, req.user.userId);
@@ -49,7 +66,7 @@ export class TaskController {
   // Cai no kanban coletivo (isMainTicketBoard) — sem captura manual de token.
   @Post('ticket')
   @UseInterceptors(
-    FilesInterceptor('attachments', 5, { storage: uploadStorage }),
+    FilesInterceptor('attachments', 5, uploadOptions),
   )
   async createMainTicket(
     @Body() createTicketDto: CreateTicketDto,
@@ -61,7 +78,7 @@ export class TaskController {
   // ROTA PÚBLICA: Criar Ticket (Sem Guard)
   @Post('ticket/:token')
   @UseInterceptors(
-    FilesInterceptor('attachments', 5, { storage: uploadStorage }),
+    FilesInterceptor('attachments', 5, uploadOptions),
   )
   async createTicket(
     @Param('token') token: string,
@@ -75,7 +92,7 @@ export class TaskController {
   @UseGuards(JwtAuthGuard)
   @Post('employee-submit')
   @UseInterceptors(
-    FilesInterceptor('attachments', 5, { storage: uploadStorage }),
+    FilesInterceptor('attachments', 5, uploadOptions),
   )
   createEmployeeTicket(
     @Req() req,
@@ -92,44 +109,44 @@ export class TaskController {
     return this.taskService.findMyTickets(req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get('my-tasks')
   findMyTasks(@Req() req) {
     return this.taskService.findMyAssignedTasks(req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get('unassigned')
   findUnassigned(@Req() req) {
     return this.taskService.findUnassignedGroupTasks(req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get('history')
   findHistory(@Req() req) {
     return this.taskService.findCompletedTasks(req.user.userId);
   }
 
   // Fila "Aguardando minha validação" — rota estática antes de :id.
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get('awaiting-validation')
   findAwaitingValidation(@Req() req) {
     return this.taskService.findAwaitingMyValidation(req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get()
   findAll(@Query('boardId') boardId: string) {
     return this.taskService.findAll(+boardId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.taskService.findOne(+id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -139,20 +156,20 @@ export class TaskController {
     return this.taskService.update(+id, updateTaskDto, req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.taskService.remove(+id);
   }
 
   // Comments
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get(':id/comments')
   getComments(@Param('id') id: string) {
     return this.taskService.getComments(+id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Post(':id/comments')
   addComment(
     @Param('id') id: string,
@@ -163,7 +180,7 @@ export class TaskController {
   }
 
   // Subtasks
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Post(':id/subtasks')
   createSubtask(
     @Param('id') id: string,
@@ -172,7 +189,7 @@ export class TaskController {
     return this.taskService.createSubtask(+id, createSubtaskDto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Patch(':id/subtasks/:subtaskId')
   updateSubtask(
     @Param('id') id: string,
@@ -182,7 +199,7 @@ export class TaskController {
     return this.taskService.updateSubtask(+id, +subtaskId, updateSubtaskDto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Delete(':id/subtasks/:subtaskId')
   removeSubtask(
     @Param('id') id: string,

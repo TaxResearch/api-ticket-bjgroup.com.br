@@ -20,9 +20,10 @@ import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { DevTeamGuard } from '../auth/dev-team.guard';
 
 @Controller('groups')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, DevTeamGuard)
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 

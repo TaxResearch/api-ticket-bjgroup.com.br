@@ -4,6 +4,7 @@
 import { Controller, Get, Patch, Body, UseGuards, Req } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { DevTeamGuard } from '../auth/dev-team.guard';
 import { UpdateUserSettingsDto } from './dto/update-user-settings.dto';
 
 @Controller('user')
@@ -11,7 +12,7 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   // Time de dev (atribuíveis no board coletivo). Rota estática, sem conflito com /me.
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get('dev-team')
   async getDevTeam() {
     return this.userService.findDevTeam();

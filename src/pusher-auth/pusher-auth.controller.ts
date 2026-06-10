@@ -20,20 +20,11 @@ export class PusherAuthController {
   private pusher: Pusher;
 
   constructor(private configService: ConfigService) {
-    const appId = '2068385';
-    const key = 'c4f7fea1d37fea1c1c73';
-    const secret = 'fbbf9c225f9d67c9504f';
-    const cluster = 'us2';
-
-    if (!appId || !key || !secret || !cluster) {
-      throw new Error('Missing Pusher configuration environment variables');
-    }
-
     this.pusher = new Pusher({
-      appId,
-      key,
-      secret,
-      cluster,
+      appId: this.configService.getOrThrow<string>('PUSHER_APP_ID'),
+      key: this.configService.getOrThrow<string>('PUSHER_KEY'),
+      secret: this.configService.getOrThrow<string>('PUSHER_SECRET'),
+      cluster: this.configService.getOrThrow<string>('PUSHER_CLUSTER'),
       useTLS: true,
     });
   }

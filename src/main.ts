@@ -5,11 +5,20 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Habilita CORS para permitir requisições do frontend
+  // CORS restrito à(s) origem(ns) do front. A API só é chamada de
+  // ticket.bjgroup.com.br (inclusive o widget, que abre ticket.php em iframe na
+  // mesma origem). Configurável via CORS_ORIGINS (lista separada por vírgula).
+  const corsOrigins = (
+    process.env.CORS_ORIGINS ||
+    'https://ticket.bjgroup.com.br,https://devdeck.okcarro.com.br,http://localhost:8000,http://localhost:3000'
+  )
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
   app.enableCors({
-    origin: '*', // Em produção, restrinja para a origem do seu frontend
+    origin: corsOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
+    credentials: false, // auth é via Bearer header, não cookie
   });
 
   // Habilita validação global usando class-validator e class-transformer
