@@ -110,6 +110,13 @@ export class TaskController {
     return this.taskService.findCompletedTasks(req.user.userId);
   }
 
+  // Fila "Aguardando minha validação" — rota estática antes de :id.
+  @UseGuards(JwtAuthGuard)
+  @Get('awaiting-validation')
+  findAwaitingValidation(@Req() req) {
+    return this.taskService.findAwaitingMyValidation(req.user.userId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get()
   findAll(@Query('boardId') boardId: string) {

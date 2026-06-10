@@ -516,6 +516,27 @@ export class TaskService {
     });
   }
 
+  // Tickets em que o usuário é o validador designado e ainda não concluídos —
+  // a fila "Aguardando minha validação".
+  async findAwaitingMyValidation(userId: number) {
+    return this.prisma.ticket.findMany({
+      where: {
+        validatorUserId: userId,
+        requiresValidation: true,
+        status: { not: 'DONE' },
+      },
+      include: {
+        subtasks: { orderBy: { id: 'asc' } },
+        assignedUser: { select: { id: true, name: true, email: true } },
+        requester: {
+          select: { id: true, name: true, email: true, company: true },
+        },
+        board: { select: { id: true, name: true, groupId: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
   async findCompletedTasks(userId: number) {
     return this.prisma.ticket.findMany({
       where: {
