@@ -13,11 +13,14 @@ export class BoardService {
 
   async create(userId: number, createBoardDto: CreateBoardDto) {
     if (createBoardDto.groupId) {
+      // Dono (owner) e admins podem criar quadros no projeto. O criador do grupo
+      // entra como role 'owner' (group.service), então precisa estar incluído aqui
+      // — senão nem o dono conseguiria criar o quadro do próprio projeto.
       const groupMember = await this.prisma.groupMember.findFirst({
         where: {
           groupId: createBoardDto.groupId,
           userId: userId,
-          role: 'admin',
+          role: { in: ['owner', 'admin'] },
         },
       });
 
