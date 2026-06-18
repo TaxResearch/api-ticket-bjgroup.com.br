@@ -469,7 +469,14 @@ export class TaskService {
 
   async findMyAssignedTasks(userId: number) {
     return this.prisma.ticket.findMany({
-      where: { assignedUserId: userId, status: { not: 'DONE' } },
+      // "Meu Quadro": tarefas atribuídas a mim, exceto as de quadros de projeto
+      // (board.type === 'group'), que vivem só dentro do projeto. Mantém tarefas
+      // pessoais e tickets do board principal que o dev pegou (type 'personal').
+      where: {
+        assignedUserId: userId,
+        status: { not: 'DONE' },
+        board: { type: { not: 'group' } },
+      },
       include: {
         subtasks: { orderBy: { id: 'asc' } },
         assignedUser: { select: { id: true, name: true, email: true } },
@@ -482,22 +489,15 @@ export class TaskService {
     });
   }
 
-  async findUnassignedGroupTasks(userId: number) {
+  async findUnassignedGroupTasks(_userId: number) {
     return this.prisma.ticket.findMany({
+      // "Tickets em aberto": só os chamados que chegam no board principal e ainda
+      // não têm responsável. Tarefas não-atribuídas de quadros de projeto NÃO entram
+      // aqui — ficam só dentro do projeto, sem poluir a fila de chamados.
       where: {
         assignedUserId: null,
         status: { not: 'DONE' },
-        OR: [
-          {
-            board: {
-              type: 'group',
-              group: {
-                members: { some: { userId, inviteStatus: 'accepted' } },
-              },
-            },
-          },
-          { board: { isMainTicketBoard: true } },
-        ],
+        board: { isMainTicketBoard: true },
       },
       include: {
         subtasks: { orderBy: { id: 'asc' } },
