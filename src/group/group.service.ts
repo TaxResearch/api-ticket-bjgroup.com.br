@@ -219,13 +219,14 @@ export class GroupService {
       );
     }
 
-    // Criar convite
+    // Adiciona o dev DIRETO no quadro (sem etapa de aceite) — são devs internos
+    // da holding; o "convite" é só vincular ao projeto.
     return this.prisma.groupMember.create({
       data: {
         groupId,
         userId: userToInvite.id,
         role: inviteDto.role || 'member',
-        inviteStatus: 'pending',
+        inviteStatus: 'accepted',
       },
       include: {
         user: { select: { id: true, name: true, email: true } },
@@ -309,20 +310,29 @@ export class GroupService {
       throw new NotFoundException('Grupo não encontrado');
     }
 
+    // Um membro pode sair do quadro sozinho (remover a si mesmo). Para remover
+    // OUTRO membro, precisa ser owner/admin.
     const requesterMember = group.members.find((m) => m.userId === userId);
+    const isSelfLeave = memberId === userId;
+    if (!requesterMember) {
+      throw new ForbiddenException('Você não é membro deste grupo');
+    }
     if (
-      !requesterMember ||
-      (requesterMember.role !== 'owner' && requesterMember.role !== 'admin')
+      !isSelfLeave &&
+      requesterMember.role !== 'owner' &&
+      requesterMember.role !== 'admin'
     ) {
       throw new ForbiddenException(
         'Você não tem permissão para remover membros',
       );
     }
 
-    // Não permitir remover owner
+    // Não permitir remover o owner (nem ele sair — deve excluir o projeto).
     const targetMember = group.members.find((m) => m.userId === memberId);
     if (targetMember?.role === 'owner') {
-      throw new BadRequestException('Não é possível remover o owner');
+      throw new BadRequestException(
+        'O dono não pode sair do quadro — exclua o projeto.',
+      );
     }
 
     return this.prisma.groupMember.delete({
