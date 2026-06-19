@@ -219,14 +219,14 @@ export class GroupService {
       );
     }
 
-    // Adiciona o dev DIRETO no quadro (sem etapa de aceite) — são devs internos
-    // da holding; o "convite" é só vincular ao projeto.
+    // Cria o convite como PENDENTE — o dev precisa aceitar em "Convites pendentes"
+    // pra então o projeto/quadro aparecer pra ele.
     return this.prisma.groupMember.create({
       data: {
         groupId,
         userId: userToInvite.id,
         role: inviteDto.role || 'member',
-        inviteStatus: 'accepted',
+        inviteStatus: 'pending',
       },
       include: {
         user: { select: { id: true, name: true, email: true } },
