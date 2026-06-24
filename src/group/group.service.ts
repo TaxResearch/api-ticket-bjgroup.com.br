@@ -38,7 +38,7 @@ export class GroupService {
    * Listar grupos do usuário (como membro ou owner)
    */
   async findUserGroups(userId: number) {
-    return this.prisma.group.findMany({
+    const groups = await this.prisma.group.findMany({
       where: {
         members: {
           some: {
@@ -54,9 +54,32 @@ export class GroupService {
             user: { select: { id: true, name: true, email: true } },
           },
         },
+        boards: { select: { id: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    // Contador de tarefas em aberto (não concluídas) por projeto — alimenta o
+    // "sino" no card do projeto, antes de abrir o quadro.
+    const boardIds = groups.flatMap((g) => g.boards.map((b) => b.id));
+    const counts = boardIds.length
+      ? await this.prisma.ticket.groupBy({
+          by: ['boardId'],
+          where: { boardId: { in: boardIds }, status: { not: 'DONE' } },
+          _count: { _all: true },
+        })
+      : [];
+    const pendingByBoard = new Map<number, number>(
+      counts.map((c) => [c.boardId, c._count._all]),
+    );
+
+    return groups.map((g) => ({
+      ...g,
+      pendingTaskCount: g.boards.reduce(
+        (sum, b) => sum + (pendingByBoard.get(b.id) ?? 0),
+        0,
+      ),
+    }));
   }
 
   /**
