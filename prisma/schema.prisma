@@ -133,12 +133,13 @@ model Subtask {
 }
 
 model TicketComment {
-  id         Int      @id @default(autoincrement())
-  ticketId   Int
-  userId     Int?
-  authorName String
-  content    String   @db.Text
-  createdAt  DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  ticketId    Int
+  userId      Int?
+  authorName  String
+  content     String   @db.Text
+  attachments String?  @db.Text // JSON com caminhos /uploads/... (anexos da mensagem)
+  createdAt   DateTime @default(now())
 
   ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   user       User?    @relation(fields: [userId], references: [id])

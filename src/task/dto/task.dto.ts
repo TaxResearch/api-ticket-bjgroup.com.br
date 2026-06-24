@@ -179,9 +179,11 @@ export class UpdateTaskDto {
 }
 
 export class CreateCommentDto {
+  // Opcional: a mensagem pode ser só anexo (sem texto). O service exige
+  // pelo menos um dos dois (texto ou anexo).
   @IsString()
-  @IsNotEmpty()
-  content: string;
+  @IsOptional()
+  content?: string;
 }
 
 // Mantive Subtasks igual

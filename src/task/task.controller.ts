@@ -109,6 +109,27 @@ export class TaskController {
     return this.taskService.findMyTickets(req.user.userId);
   }
 
+  // Acompanhamento pelo portal: o solicitante lê a conversa do SEU ticket.
+  // Sem DevTeamGuard — ownership é validado no service por requesterUserId.
+  @UseGuards(JwtAuthGuard)
+  @Get('my-tickets/:id/comments')
+  getMyTicketComments(@Req() req, @Param('id') id: string) {
+    return this.taskService.findMyTicketComments(req.user.userId, +id);
+  }
+
+  // Acompanhamento pelo portal: o solicitante responde no SEU ticket (com anexos).
+  @UseGuards(JwtAuthGuard)
+  @Post('my-tickets/:id/comments')
+  @UseInterceptors(FilesInterceptor('attachments', 5, uploadOptions))
+  addMyTicketComment(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() dto: CreateCommentDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    return this.taskService.addMyTicketComment(req.user.userId, +id, dto, files);
+  }
+
   @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get('my-tasks')
   findMyTasks(@Req() req) {
@@ -171,12 +192,14 @@ export class TaskController {
 
   @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Post(':id/comments')
+  @UseInterceptors(FilesInterceptor('attachments', 5, uploadOptions))
   addComment(
     @Param('id') id: string,
     @Body() dto: CreateCommentDto,
     @Req() req,
+    @UploadedFiles() files?: Express.Multer.File[],
   ) {
-    return this.taskService.addComment(+id, req.user.userId, dto);
+    return this.taskService.addComment(+id, req.user.userId, dto, files);
   }
 
   // Subtasks

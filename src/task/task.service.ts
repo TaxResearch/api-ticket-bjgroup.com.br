@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -428,6 +429,13 @@ export class TaskService {
     });
   }
 
+  // Anexos da mensagem: mesmos caminhos /uploads/... usados na abertura do ticket.
+  private filesToAttachments(files?: Express.Multer.File[]): string | null {
+    return files?.length
+      ? JSON.stringify(files.map((f) => `/uploads/${f.filename}`))
+      : null;
+  }
+
   async getComments(ticketId: number) {
     return this.prisma.ticketComment.findMany({
       where: { ticketId },
@@ -436,27 +444,133 @@ export class TaskService {
     });
   }
 
-  async addComment(ticketId: number, userId: number, dto: CreateCommentDto) {
+  async addComment(
+    ticketId: number,
+    userId: number,
+    dto: CreateCommentDto,
+    files?: Express.Multer.File[],
+  ) {
     const ticket = await this.findOne(ticketId);
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuário não encontrado.');
 
+    const content = (dto.content || '').trim();
+    const attachments = this.filesToAttachments(files);
+    if (!content && !attachments) {
+      throw new BadRequestException('A mensagem precisa de texto ou anexo.');
+    }
+
     const comment = await this.prisma.ticketComment.create({
-      data: { ticketId, userId, authorName: user.name, content: dto.content },
+      data: { ticketId, userId, authorName: user.name, content, attachments },
       include: { user: { select: { id: true, name: true } } },
     });
 
     if (ticket.requesterEmail) {
       const requesterName = ticket.requesterName || 'Cliente';
-      const htmlBody = `<p>Olá <strong>${requesterName}</strong>,</p><p><strong>${user.name}</strong> enviou uma mensagem sobre seu ticket <strong>"${ticket.title}"</strong>:</p><blockquote style="border-left:3px solid #ccc;padding-left:12px;margin:16px 0;color:#333">${dto.content.replace(/\n/g, '<br>')}</blockquote><p>Att,<br>Equipe de Desenvolvimento BJGROUP</p>`;
+      const summary = content || `📎 ${files?.length || 0} anexo(s)`;
+      const htmlBody = `<p>Olá <strong>${requesterName}</strong>,</p><p><strong>${user.name}</strong> enviou uma mensagem sobre seu ticket <strong>"${ticket.title}"</strong>:</p><blockquote style="border-left:3px solid #ccc;padding-left:12px;margin:16px 0;color:#333">${summary.replace(/\n/g, '<br>')}</blockquote><p>Att,<br>Equipe de Desenvolvimento BJGROUP</p>`;
       this.emailService
         .sendEmail(
           ticket.requesterEmail,
           `Nova mensagem sobre seu ticket: ${ticket.title}`,
-          `Olá ${requesterName},\n\n${user.name} enviou uma mensagem sobre seu ticket "${ticket.title}":\n\n"${dto.content}"\n\nAtt,\nEquipe de Desenvolvimento BJGROUP`,
+          `Olá ${requesterName},\n\n${user.name} enviou uma mensagem sobre seu ticket "${ticket.title}":\n\n"${summary}"\n\nAtt,\nEquipe de Desenvolvimento BJGROUP`,
           htmlBody,
         )
         .catch((e) => console.error('Erro email comment:', e));
+    }
+
+    this.pusherService.trigger('devdeck-tickets', 'ticket.comment', {
+      ticketId,
+      commentId: comment.id,
+    });
+
+    return comment;
+  }
+
+  // --- Acompanhamento pelo portal: comentários escopados ao DONO do ticket ---
+  // O solicitante (requesterUserId) pode ler e responder a conversa do seu
+  // próprio ticket, sem ser do time dev. Ownership é checado em ambos os métodos.
+
+  async findMyTicketComments(userId: number, ticketId: number) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, requesterUserId: true },
+    });
+    if (!ticket) throw new NotFoundException('Ticket não encontrado.');
+    if (ticket.requesterUserId !== userId) {
+      throw new ForbiddenException('Você não tem acesso a este ticket.');
+    }
+    return this.prisma.ticketComment.findMany({
+      where: { ticketId },
+      include: { user: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async addMyTicketComment(
+    userId: number,
+    ticketId: number,
+    dto: CreateCommentDto,
+    files?: Express.Multer.File[],
+  ) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { assignedUser: true },
+    });
+    if (!ticket) throw new NotFoundException('Ticket não encontrado.');
+    if (ticket.requesterUserId !== userId) {
+      throw new ForbiddenException('Você não tem acesso a este ticket.');
+    }
+
+    const content = (dto.content || '').trim();
+    const attachments = this.filesToAttachments(files);
+    if (!content && !attachments) {
+      throw new BadRequestException('A mensagem precisa de texto ou anexo.');
+    }
+
+    // Regra de produto: a conversa do portal só abre depois que a EQUIPE (dev)
+    // envia a 1ª mensagem. Antes disso o solicitante só acompanha o status —
+    // evita o portal virar um canal de cobrança. Travado no backend de propósito
+    // (não dá pra confiar só no front esconder o composer).
+    const devMessageCount = await this.prisma.ticketComment.count({
+      where: { ticketId, userId: { not: userId } },
+    });
+    if (devMessageCount === 0) {
+      throw new ForbiddenException(
+        'A conversa ainda não foi aberta pela equipe. Você poderá responder após a primeira mensagem do time de desenvolvimento.',
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuário não encontrado.');
+
+    const comment = await this.prisma.ticketComment.create({
+      data: { ticketId, userId, authorName: user.name, content, attachments },
+      include: { user: { select: { id: true, name: true } } },
+    });
+
+    // Resposta do solicitante notifica o dev responsável (oposto de addComment,
+    // que notifica o solicitante quando o dev escreve).
+    const dev = ticket.assignedUser;
+    const summary = content || `📎 ${files?.length || 0} anexo(s)`;
+    if (dev?.email) {
+      const htmlBody = `<p>Olá <strong>${dev.name}</strong>,</p><p><strong>${user.name}</strong> respondeu no ticket <strong>"${ticket.title}"</strong>:</p><blockquote style="border-left:3px solid #ccc;padding-left:12px;margin:16px 0;color:#333">${summary.replace(/\n/g, '<br>')}</blockquote><p>Acesse o DevDeck para responder.</p>`;
+      this.emailService
+        .sendEmail(
+          dev.email,
+          `Nova resposta no ticket: ${ticket.title}`,
+          `Olá ${dev.name},\n\n${user.name} respondeu no ticket "${ticket.title}":\n\n"${summary}"\n\nAcesse o DevDeck para responder.`,
+          htmlBody,
+        )
+        .catch((e) => console.error('Erro email comment(requester):', e));
+    }
+    if (dev?.discordWebhook) {
+      this.discordService
+        .sendNotification(
+          dev.discordWebhook,
+          `💬 **Nova resposta no ticket #${ticket.id}**\n\n**${ticket.title}**\n${user.name}: ${summary.substring(0, 200)}`,
+        )
+        .catch((e) => console.error('Erro Discord comment(requester):', e));
     }
 
     this.pusherService.trigger('devdeck-tickets', 'ticket.comment', {
