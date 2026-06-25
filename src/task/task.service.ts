@@ -4,10 +4,12 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { PusherService } from '../pusher/pusher.service';
 import { DiscordService } from '../discord/discord.service';
+import { verifyTrackToken } from './track-token.util';
 import {
   CreateSubtaskDto,
   CreateCommentDto,
@@ -83,7 +85,19 @@ export class TaskService {
     private emailService: EmailService,
     private pusherService: PusherService,
     private discordService: DiscordService,
+    private config: ConfigService,
   ) {}
+
+  // Verifica o token de acompanhamento e devolve o e-mail normalizado.
+  // Erros do util viram ForbiddenException (token inválido/expirado/e-mail vazio).
+  private trackEmail(token: string): string {
+    const secret = this.config.getOrThrow<string>('WIDGET_TRACK_SECRET');
+    try {
+      return verifyTrackToken(token, secret);
+    } catch {
+      throw new ForbiddenException('Link de acompanhamento inválido ou expirado.');
+    }
+  }
 
   async create(createTaskDto: CreateTaskDto, userId: number) {
     const ticket = await this.prisma.ticket.create({
@@ -571,6 +585,130 @@ export class TaskService {
           `💬 **Nova resposta no ticket #${ticket.id}**\n\n**${ticket.title}**\n${user.name}: ${summary.substring(0, 200)}`,
         )
         .catch((e) => console.error('Erro Discord comment(requester):', e));
+    }
+
+    this.pusherService.trigger('devdeck-tickets', 'ticket.comment', {
+      ticketId,
+      commentId: comment.id,
+    });
+
+    return comment;
+  }
+
+  // --- Acompanhamento embutido (widget) — escopado por E-MAIL via token ---
+  // O painel da holding (que já autenticou o usuário) assina o e-mail; aqui
+  // confiamos no token e ancoramos tudo em requesterEmail. Sem JWT, sem conta:
+  // a identidade é o e-mail (ver track-token.util.ts e findMyTickets por userId).
+
+  async findTicketsByTrack(token: string) {
+    const email = this.trackEmail(token);
+    return this.prisma.ticket.findMany({
+      where: { requesterEmail: email, isTicket: true },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        category: true,
+        requesterCompany: true,
+        status: true,
+        priority: true,
+        attachments: true,
+        dueDate: true,
+        createdAt: true,
+        updatedAt: true,
+        assignedUser: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // Garante que o ticket é mesmo do dono do token (e-mail) — senão 403.
+  private async assertTrackOwnership(token: string, ticketId: number) {
+    const email = this.trackEmail(token);
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, requesterEmail: true },
+    });
+    if (!ticket) throw new NotFoundException('Ticket não encontrado.');
+    if ((ticket.requesterEmail || '').trim().toLowerCase() !== email) {
+      throw new ForbiddenException('Você não tem acesso a este ticket.');
+    }
+    return email;
+  }
+
+  async findTrackComments(token: string, ticketId: number) {
+    await this.assertTrackOwnership(token, ticketId);
+    return this.prisma.ticketComment.findMany({
+      where: { ticketId },
+      include: { user: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async addTrackComment(
+    token: string,
+    ticketId: number,
+    dto: CreateCommentDto,
+    files?: Express.Multer.File[],
+  ) {
+    await this.assertTrackOwnership(token, ticketId);
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { assignedUser: true },
+    });
+    if (!ticket) throw new NotFoundException('Ticket não encontrado.');
+
+    const content = (dto.content || '').trim();
+    const attachments = this.filesToAttachments(files);
+    if (!content && !attachments) {
+      throw new BadRequestException('A mensagem precisa de texto ou anexo.');
+    }
+
+    // Mesmo gating do portal: a conversa só abre depois da 1ª mensagem da EQUIPE.
+    // No fluxo por e-mail, "mensagem do solicitante" tem userId=null e "mensagem
+    // da equipe (dev)" tem userId != null — então basta contar comentários com dono.
+    const devMessageCount = await this.prisma.ticketComment.count({
+      where: { ticketId, userId: { not: null } },
+    });
+    if (devMessageCount === 0) {
+      throw new ForbiddenException(
+        'A conversa ainda não foi aberta pela equipe. Você poderá responder após a primeira mensagem do time de desenvolvimento.',
+      );
+    }
+
+    // Solicitante sem conta: comentário fica com userId=null + authorName.
+    const comment = await this.prisma.ticketComment.create({
+      data: {
+        ticketId,
+        userId: null,
+        authorName: ticket.requesterName || 'Solicitante',
+        content,
+        attachments,
+      },
+      include: { user: { select: { id: true, name: true } } },
+    });
+
+    // Notifica o dev responsável (igual addMyTicketComment).
+    const dev = ticket.assignedUser;
+    const summary = content || `📎 ${files?.length || 0} anexo(s)`;
+    if (dev?.email) {
+      const htmlBody = `<p>Olá <strong>${dev.name}</strong>,</p><p><strong>${comment.authorName}</strong> respondeu no ticket <strong>"${ticket.title}"</strong>:</p><blockquote style="border-left:3px solid #ccc;padding-left:12px;margin:16px 0;color:#333">${summary.replace(/\n/g, '<br>')}</blockquote><p>Acesse o DevDeck para responder.</p>`;
+      this.emailService
+        .sendEmail(
+          dev.email,
+          `Nova resposta no ticket: ${ticket.title}`,
+          `Olá ${dev.name},\n\n${comment.authorName} respondeu no ticket "${ticket.title}":\n\n"${summary}"\n\nAcesse o DevDeck para responder.`,
+          htmlBody,
+        )
+        .catch((e) => console.error('Erro email track-comment:', e));
+    }
+    if (dev?.discordWebhook) {
+      this.discordService
+        .sendNotification(
+          dev.discordWebhook,
+          `💬 **Nova resposta no ticket #${ticket.id}**\n\n**${ticket.title}**\n${comment.authorName}: ${summary.substring(0, 200)}`,
+        )
+        .catch((e) => console.error('Erro Discord track-comment:', e));
     }
 
     this.pusherService.trigger('devdeck-tickets', 'ticket.comment', {

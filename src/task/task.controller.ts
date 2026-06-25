@@ -130,6 +130,30 @@ export class TaskController {
     return this.taskService.addMyTicketComment(req.user.userId, +id, dto, files);
   }
 
+  // --- Acompanhamento embutido no painel (widget): escopo por e-mail via token ---
+  // Sem guard: a autorização é a verificação do token assinado (HMAC) no service.
+  // Rotas estáticas declaradas ANTES das genéricas :id para não colidir.
+  @Get('track/tickets')
+  trackTickets(@Query('token') token: string) {
+    return this.taskService.findTicketsByTrack(token);
+  }
+
+  @Get('track/tickets/:id/comments')
+  trackComments(@Query('token') token: string, @Param('id') id: string) {
+    return this.taskService.findTrackComments(token, +id);
+  }
+
+  @Post('track/tickets/:id/comments')
+  @UseInterceptors(FilesInterceptor('attachments', 5, uploadOptions))
+  addTrackComment(
+    @Query('token') token: string,
+    @Param('id') id: string,
+    @Body() dto: CreateCommentDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    return this.taskService.addTrackComment(token, +id, dto, files);
+  }
+
   @UseGuards(JwtAuthGuard, DevTeamGuard)
   @Get('my-tasks')
   findMyTasks(@Req() req) {
